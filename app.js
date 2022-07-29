@@ -3,8 +3,21 @@
 const express = require('express');
 const ejs = require('ejs');
 const _ = require('lodash');
+const mongoose = require('mongoose')
 
-let posts = [];
+mongoose.connect("mongodb://localhost:27017/blogDB", {useNewUrlParser:true}, (err) => {
+  if(err) console.log(err)
+  else console.log("Successfully started");
+})
+
+const postSchema = new mongoose.Schema({
+  title: String,
+  text: String, 
+})
+
+const Post = mongoose.model("Post", postSchema);
+
+
 const homeStartingContent =
   'Lacus vel facilisis volutpat est velit egestas dui id ornare. Semper auctor neque vitae tempus quam. Sit amet cursus sit amet dictum sit amet justo. Viverra tellus in hac habitasse. Imperdiet proin fermentum leo vel orci porta. Donec ultrices tincidunt arcu non sodales neque sodales ut. Mattis molestie a iaculis at erat pellentesque adipiscing. Magnis dis parturient montes nascetur ridiculus mus mauris vitae ultricies. Adipiscing elit ut aliquam purus sit amet luctus venenatis lectus. Ultrices vitae auctor eu augue ut lectus arcu bibendum at. Odio euismod lacinia at quis risus sed vulputate odio ut. Cursus mattis molestie a iaculis at erat pellentesque adipiscing.';
 const aboutContent =
@@ -20,10 +33,16 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 app.get('/', (req, res) => {
-  res.render('home', {
-    homeStartingContent: homeStartingContent,
-    posts: posts,
-  });
+
+  Post.find({}, (err, posts) => {
+    console.log(posts)
+    if(!err){
+      res.render('home', {
+        homeStartingContent: homeStartingContent,
+        posts: posts,
+      });
+    }
+  })
 });
 
 app.get('/about', (req, res) => {
@@ -39,23 +58,23 @@ app.get('/compose', (req, res) => {
 });
 
 app.post('/compose', (req, res) => {
-  const post = {
+  const post = new Post({
     title: req.body.postTitle,
-    text: req.body.postText,
-  };
+    text: req.body.postText
+  })
 
-  posts.push(post);
-  res.redirect('/');
+  post.save((err) => {
+    if(!err){
+      res.redirect('/');
+    }
+  })
 });
 
-app.get('/posts/:title', (req, res) => {
-  const titleParam = _.lowerCase(req.params.title);
-
-  posts.forEach((post) => {
-    if (_.lowerCase(post.title) === titleParam) {
-      res.render('post', { title: post.title, text: post.text });
-    }
-  });
+app.get('/posts/:postId', (req, res) => {
+  const postId = req.params.postId
+  Post.findOne({_id: postId}, (err, post) => {
+    res.render('post', { title: post.title, text: post.text });
+  })
 });
 
 app.listen(3000, () => {
